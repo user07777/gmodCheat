@@ -3,4 +3,4 @@ apenas esp no momento
 em breve talvez eu faça um aimbot!<br>
 # atalhos
 linhas = insert
-caixa = box
+caixa = home
