@@ -2,5 +2,5 @@
 ~~apenas esp no momento em breve talvez eu faça um aimbot!~~<br>
 # liga / desliga
 linhas = insert<br>
-caixa = home
+caixa = home<br>
 aimbot = delete
