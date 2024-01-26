@@ -6,25 +6,29 @@
 #pragma comment (lib,"d3d9.lib")
 #pragma comment (lib,"d3dx9.lib")
 #include <hack.cpp>
+#include <cmath>
+#include "offsets.h"
 #include "vector3.h"
 #include "draw.h"
 #include "esp.h"
-
+#include "aim.h"
 #define STR_MERGE_IMPL(a, b) a##b
 #define STR_MERGE(a, b) STR_MERGE_IMPL(a, b)
 #define MAKE_PAD(size) STR_MERGE(_pad, __COUNTER__)[size]
 #define DEFINE_MEMBER_N(type, name, offset) struct {unsigned char MAKE_PAD(offset); type name;}
-
+#define PI 3.1415926535897
 //directx hook
 HWND window;
 int width = 1024;
 int height = 768;
-bool snapLine = false, bEsp = false;
+bool snapLine = false, bEsp = false,bMenu=true,baim=false;
 LPDIRECT3DDEVICE9 pDev_;
 
 typedef HRESULT(APIENTRY* tEnd)(LPDIRECT3DDEVICE9 pDev);
 tEnd OriginalEnd = nullptr;
 Esp* esp = new Esp();
+Vec3 menuSize = { 250,300 };
+char menuName[] = "CheetahChug";
 BOOL CALLBACK enumwind(HWND handle, LPARAM lp) {
     DWORD PID;
     GetWindowThreadProcessId(handle, &PID);
@@ -36,7 +40,7 @@ HWND getprocesswindow() {
     EnumWindows(enumwind, NULL);
     RECT size;
     GetWindowRect(window, &size);
-    //windowWidth = size.right - size.left;
+    //width = size.right - size.left;
     //windowHeight = size.bottom - size.top;
     return window;
 }
@@ -69,6 +73,16 @@ bool getDirectxDevice(void** pTable, size_t size) {
 }
 
 DWORD color;
+void drawtext(const char* txt, float x, float y, D3DCOLOR color) {
+    RECT recta;
+    if (!esp->font) {
+        D3DXCreateFont(pDev_, 25, 0, FW_NORMAL, 1, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, L"Arial", &esp->font);
+    }
+    SetRect(&recta, x + 1, y + 1, x + 1, y + 1);
+    esp->font->DrawTextA(0, txt, -1, &recta, DT_CENTER | DT_NOCLIP, BLACK(255));
+    SetRect(&recta, x + 1, y + 1, x + 1, y + 1);
+    esp->font->DrawTextA(0, txt, -1, &recta, DT_CENTER | DT_NOCLIP, color);
+}
 VOID APIENTRY hooked_directx(LPDIRECT3DDEVICE9 o_pDev) {
     if (!pDev_)  pDev_ = o_pDev;
     CDraw draw;
@@ -79,7 +93,7 @@ VOID APIENTRY hooked_directx(LPDIRECT3DDEVICE9 o_pDev) {
     if (snapLine) {
         for (int i = 0; i < 64; i++) {
             ent* entity = esp->entlist->entlist[i].ent;
-            if (entity == esp->localPlayer) continue;
+            if (i == 0) continue;
             if (!esp->isValid(entity)) {
                 continue;
             }
@@ -100,7 +114,7 @@ VOID APIENTRY hooked_directx(LPDIRECT3DDEVICE9 o_pDev) {
         for (int i = 0; i < 64; i++) {
             Vec3 head;
             ent* entity = esp->entlist->entlist[i].ent;
-            if (entity == esp->localPlayer) continue;
+            if (i ==0) continue;
             if (!esp->isValid(entity)) {
                 continue;
             }
@@ -123,30 +137,27 @@ VOID APIENTRY hooked_directx(LPDIRECT3DDEVICE9 o_pDev) {
             }
         }
     }
+
     OriginalEnd(pDev_);
-}
-
-
-void domyFunct() {
-
 }
 
 
 
 DWORD WINAPI mainThread(HMODULE mod) {
-    AllocConsole();
-    FILE* f;
-    freopen_s(&f, "CONOUT$", "w", stdout);
-
+    //AllocConsole();
+    //FILE* f;
+    //freopen_s(&f, "CONOUT$", "w", stdout);
     //-----------------------------------------------
     //  dxd9  hook
+    bool selected;
+    float smoothing = 4.0f;
     void* DxDvc[119];
     BYTE EndSceneByte[7]{ 0 };
     if (getDirectxDevice(DxDvc, sizeof(DxDvc))) {
         HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, 10);
-        std::cout << "[+] DXD9 Hooked!\n";
-        SetConsoleTextAttribute(hConsole, 7);
+        //SetConsoleTextAttribute(hConsole, 10);
+       // std::cout << "[+] DXD9 Hooked!\n";
+        //SetConsoleTextAttribute(hConsole, 7);
         memcpy(EndSceneByte, (char*)DxDvc[42], 7);
         OriginalEnd = (tEnd)detours::TrampHook32((char*)(DxDvc[42]), (char*)hooked_directx, 7);
     }
@@ -159,16 +170,36 @@ DWORD WINAPI mainThread(HMODULE mod) {
         if (GetAsyncKeyState(VK_HOME) & 1) {
             bEsp = !bEsp;
         }
+        if (GetAsyncKeyState(VK_DELETE) & 1) {
+            baim = !baim;
+        }
+        if (GetAsyncKeyState(VK_END) & 1) {
+            bMenu = !bMenu;
+        }
+        if (baim) {
+            for (int i = 0; i < 64; i++) {
+                ent* entity = esp->entlist->entlist[i].ent;
+                if (entity == esp->localPlayer) continue;
+                if (!esp->isValid(entity)) {
+                    continue;
+                }
+                *esp->vecview = calcAngle(esp->localPlayer->m_vecOrigin, esp->bonePos(entity, 6));
+            }
+        }
+        Sleep(1);
     }
 
-    Sleep(1);
+    Sleep(1000);
     //unhook directx;
     bEsp = false;
     snapLine = false;
-    memcpy(DxDvc[42], EndSceneByte, 7);
+    DWORD oldprotect;
+    VirtualProtect((BYTE*)DxDvc[42], 7, PAGE_EXECUTE_READWRITE, &oldprotect);
+    memcpy((BYTE*)DxDvc[42], EndSceneByte, 7);
+    VirtualProtect((BYTE*)DxDvc[42], 7, oldprotect, &oldprotect);
     Sleep(1.2);
-    fclose(f);
-    FreeConsole();
+   // fclose(f);
+   // FreeConsole();
     FreeLibraryAndExitThread(mod, 0);
     return 0;
 }

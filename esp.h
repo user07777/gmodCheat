@@ -15,13 +15,16 @@ public:
 		DEFINE_MEMBER_N(int, health, 0x90);
 		DEFINE_MEMBER_N(int, team, 0x9c);
 		DEFINE_MEMBER_N(Vec3, m_vecOrigin, 0x260);
+		DEFINE_MEMBER_N(Vec3, v1, 0x264);
+		DEFINE_MEMBER_N(Vec3, v2, 0x2CC);
+
 		DEFINE_MEMBER_N(int, boneArr, 0x13F0);
 	};
 };
 
 class EntList_ {
 public:
-	struct ent* ent;
+	ent* ent;
 	char pad[12];
 };
 
@@ -35,8 +38,8 @@ class Esp
 public:
 	uintptr_t engine = (uintptr_t)GetModuleHandle(L"engine.dll");
 	uintptr_t client = (uintptr_t)GetModuleHandle(L"client.dll");
-	ent* localPlayer = (ent*)*(uintptr_t*)(client + 0x007D108C);
 	Entlist* entlist = (Entlist*)(client + 0x0756B04);
+	ent* localPlayer = entlist->entlist[0].ent;
 	ID3DXLine* m_Line;
 	uintptr_t viewMatrixaddr = *(uintptr_t*)(engine + 0x0121CAC);
 	float viewMatrix[16];
@@ -45,6 +48,8 @@ public:
 	bool isValid(ent* ent);
 	bool Wrld2Screen(Vec3 pos, Vec3& screen,int width,int height);
 	Vec3 bonePos(ent*, int bone);
+	Vec3* vecview = (Vec3*)((uintptr_t)(GetModuleHandle(L"engine.dll")) + 0x504854);
+
 };
 
 

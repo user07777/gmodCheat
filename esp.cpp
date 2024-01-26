@@ -6,6 +6,8 @@
 CDraw ddraw;
 void Esp::update() {
 	memcpy(&viewMatrix, (BYTE*)(viewMatrixaddr), sizeof(viewMatrix));
+	vecview = (Vec3*)((uintptr_t)(GetModuleHandle(L"engine.dll")) + 0x504854);
+
 }
 bool Esp::isValid(ent* entity) {
 	if ((entity == nullptr) ||
