@@ -39,7 +39,7 @@ public:
 	uintptr_t engine = (uintptr_t)GetModuleHandle(L"engine.dll");
 	uintptr_t client = (uintptr_t)GetModuleHandle(L"client.dll");
 	Entlist* entlist = (Entlist*)(client + 0x0756B04);
-	ent* localPlayer = entlist->entlist[0].ent;
+	ent* localPlayer = *(ent**)(uintptr_t*)(client + 0x07D108C);
 	ID3DXLine* m_Line;
 	uintptr_t viewMatrixaddr = *(uintptr_t*)(engine + 0x0121CAC);
 	float viewMatrix[16];
